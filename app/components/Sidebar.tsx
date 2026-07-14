@@ -23,10 +23,6 @@ const GROUPS: Group[] = [
       { href: '/contact', label: 'Contact inbox', icon: '✉' },
     ],
   },
-];
-
-// Rendered greyed-out — these land in later phases (see ROADMAP.md).
-const SOON: Group[] = [
   {
     label: 'Content',
     items: [
@@ -35,6 +31,10 @@ const SOON: Group[] = [
       { href: '/reviews', label: 'Reviews', icon: '★' },
     ],
   },
+];
+
+// Rendered greyed-out — these land in later phases (see ROADMAP.md).
+const SOON: Group[] = [
   {
     label: 'Catalog',
     items: [
@@ -62,11 +62,19 @@ const SOON: Group[] = [
   },
 ];
 
-export function Sidebar({ admin }: { admin: { username: string; email: string | null } }) {
+export function Sidebar({
+  admin,
+  openReports = 0,
+}: {
+  admin: { username: string; email: string | null };
+  openReports?: number;
+}) {
   const pathname = usePathname();
 
   const isActive = (href: string) =>
     href === '/' ? pathname === '/' : pathname.startsWith(href);
+
+  const badgeFor = (href: string) => (href === '/moderation' && openReports > 0 ? openReports : undefined);
 
   return (
     <aside className="sidebar">
@@ -83,7 +91,7 @@ export function Sidebar({ admin }: { admin: { username: string; email: string | 
             >
               <span className="ico">{item.icon}</span>
               {item.label}
-              {item.badge ? <span className="nav-badge">{item.badge}</span> : null}
+              {badgeFor(item.href) ? <span className="nav-badge">{badgeFor(item.href)}</span> : null}
             </Link>
           ))}
         </div>

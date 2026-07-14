@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { getDashboardStats } from '@/lib/stats';
+import { getOpenReportCount } from './moderation/data';
 import { fmtNumber } from '@/lib/format';
 
 export const metadata = { title: 'Dashboard · Soopien Admin' };
@@ -33,6 +34,7 @@ function Stat({
 
 export default async function DashboardPage() {
   const s = await getDashboardStats();
+  const openReports = await getOpenReportCount().catch(() => 0);
   const premiumPct = s.users ? Math.round((s.premium / s.users) * 100) : 0;
 
   return (
@@ -66,14 +68,9 @@ export default async function DashboardPage() {
           <div className="value small">{fmtNumber(s.pendingPayouts)}</div>
           <div className="delta">Payouts module — soon</div>
         </div>
-        <div className="stat" style={{ opacity: 0.6 }}>
-          <div className="label">
-            <span>⚑</span>
-            Moderation queue
-          </div>
-          <div className="value small">—</div>
-          <div className="delta">Needs reports table — Phase 2</div>
-        </div>
+        <Link href="/moderation" style={{ display: 'contents' }}>
+          <Stat label="Open reports" icon="⚑" value={fmtNumber(openReports)} small delta="Moderation queue →" />
+        </Link>
       </div>
     </div>
   );
