@@ -44,10 +44,6 @@ const GROUPS: Group[] = [
     label: 'Community',
     items: [{ href: '/clubs', label: 'Clubs', icon: '◍' }],
   },
-];
-
-// Rendered greyed-out — these land in later phases (see ROADMAP.md).
-const SOON: Group[] = [
   {
     label: 'Money',
     items: [
@@ -55,6 +51,10 @@ const SOON: Group[] = [
       { href: '/payouts', label: 'Payouts', icon: '➦' },
     ],
   },
+];
+
+// Rendered greyed-out — these land in later phases (see ROADMAP.md).
+const SOON: Group[] = [
   {
     label: 'Platform',
     items: [

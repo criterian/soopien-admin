@@ -60,14 +60,9 @@ export default async function DashboardPage() {
         <Link href="/contact" style={{ display: 'contents' }}>
           <Stat label="New contact messages" icon="✉" value={fmtNumber(s.newContact)} small delta="Open inbox →" />
         </Link>
-        <div className="stat" style={{ opacity: 0.6 }}>
-          <div className="label">
-            <span>➦</span>
-            Pending payouts
-          </div>
-          <div className="value small">{fmtNumber(s.pendingPayouts)}</div>
-          <div className="delta">Payouts module — soon</div>
-        </div>
+        <Link href="/payouts" style={{ display: 'contents' }}>
+          <Stat label="Pending payouts" icon="➦" value={fmtNumber(s.pendingPayouts)} small delta="Payouts →" />
+        </Link>
         <Link href="/moderation" style={{ display: 'contents' }}>
           <Stat label="Open reports" icon="⚑" value={fmtNumber(openReports)} small delta="Moderation queue →" />
         </Link>
