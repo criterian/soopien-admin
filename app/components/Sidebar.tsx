@@ -51,18 +51,19 @@ const GROUPS: Group[] = [
       { href: '/payouts', label: 'Payouts', icon: '➦' },
     ],
   },
-];
-
-// Rendered greyed-out — these land in later phases (see ROADMAP.md).
-const SOON: Group[] = [
   {
     label: 'Platform',
     items: [
       { href: '/music', label: 'Music library', icon: '♪' },
+      { href: '/gamification', label: 'Gamification', icon: '★' },
+      { href: '/push', label: 'Push', icon: '◈' },
       { href: '/config', label: 'Limits & config', icon: '⚙' },
     ],
   },
 ];
+
+// All modules are built — nothing pending.
+const SOON: Group[] = [];
 
 export function Sidebar({
   admin,
