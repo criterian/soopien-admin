@@ -20,11 +20,11 @@ export async function listPremiumSubs(opts: { status?: string; page?: number }):
   const page = Math.max(1, opts.page ?? 1);
   const from = (page - 1) * PAGE_SIZE;
 
+  // premium_subscriptions.user_id → auth.users (not public.profiles), so there's
+  // no PostgREST relationship to embed. Fetch the rows, then join usernames in JS.
   let query = supabaseAdmin
     .from('premium_subscriptions')
-    .select('user_id, provider, status, plan, price_cents, current_period_end, created_at, profile:profiles(username, display_name)', {
-      count: 'exact',
-    })
+    .select('user_id, provider, status, plan, price_cents, current_period_end, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
@@ -32,7 +32,21 @@ export async function listPremiumSubs(opts: { status?: string; page?: number }):
 
   const { data, count, error } = await query;
   if (error) throw new Error(error.message);
-  return { rows: (data ?? []) as unknown as PremiumSubRow[], total: count ?? 0 };
+  const subs = (data ?? []) as Omit<PremiumSubRow, 'profile'>[];
+
+  const ids = subs.map((s) => s.user_id);
+  const byId = new Map<string, { username: string; display_name: string | null }>();
+  if (ids.length) {
+    const { data: profs } = await supabaseAdmin.from('profiles').select('id, username, display_name').in('id', ids);
+    for (const p of (profs ?? []) as { id: string; username: string; display_name: string | null }[]) {
+      byId.set(p.id, { username: p.username, display_name: p.display_name });
+    }
+  }
+
+  return {
+    rows: subs.map((s) => ({ ...s, profile: byId.get(s.user_id) ?? null })),
+    total: count ?? 0,
+  };
 }
 
 export type SubSummary = { active: number; revenuecat: number; lemonsqueezy: number; pastDue: number };
