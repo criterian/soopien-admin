@@ -35,6 +35,7 @@ const GROUPS: Group[] = [
     label: 'Catalog',
     items: [
       { href: '/books', label: 'Books', icon: '▤' },
+      { href: '/films', label: 'Films', icon: '▦' },
       { href: '/authors', label: 'Authors', icon: '✎' },
       { href: '/publishers', label: 'Publishers', icon: '⌂' },
     ],
@@ -47,10 +48,6 @@ const GROUPS: Group[] = [
 
 // Rendered greyed-out — these land in later phases (see ROADMAP.md).
 const SOON: Group[] = [
-  {
-    label: 'Catalog (more)',
-    items: [{ href: '/films', label: 'Films', icon: '▦' }],
-  },
   {
     label: 'Money',
     items: [
