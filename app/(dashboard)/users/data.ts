@@ -9,6 +9,7 @@ export type UserRow = {
   display_name: string | null;
   avatar_url: string | null;
   subscription_tier: string;
+  premium_until: string | null;
   is_admin: boolean;
   is_private: boolean;
   total_points: number;
@@ -20,7 +21,7 @@ export type UserRow = {
 export type UserListResult = { rows: UserRow[]; total: number };
 
 const COLS =
-  'id, username, display_name, avatar_url, subscription_tier, is_admin, is_private, total_points, date_of_birth, language, created_at';
+  'id, username, display_name, avatar_url, subscription_tier, premium_until, is_admin, is_private, total_points, date_of_birth, language, created_at';
 
 /** Paginated user list with optional username/display-name search. */
 export async function listUsers(opts: { q?: string; page?: number }): Promise<UserListResult> {

@@ -100,7 +100,16 @@ export default async function UsersPage({
                   </td>
                   <td>
                     {u.subscription_tier === 'premium' ? (
-                      <span className="chip premium">✦ premium</span>
+                      <>
+                        <span className="chip premium">✦ premium</span>
+                        <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+                          {u.premium_until
+                            ? new Date(u.premium_until).getTime() < Date.now()
+                              ? <span style={{ color: 'var(--rose)' }}>expired {fmtDate(u.premium_until)}</span>
+                              : `until ${fmtDate(u.premium_until)}`
+                            : 'no expiry'}
+                        </div>
+                      </>
                     ) : (
                       <span className="chip">freemium</span>
                     )}

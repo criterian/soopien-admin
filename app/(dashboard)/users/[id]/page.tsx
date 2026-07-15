@@ -75,6 +75,21 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               </dd>
               <dt className="muted">Date of birth</dt>
               <dd style={{ margin: 0 }}>{fmtDate(user.date_of_birth)}</dd>
+              <dt className="muted">Premium until</dt>
+              <dd style={{ margin: 0 }}>
+                {user.subscription_tier !== 'premium' ? (
+                  <span className="muted">—</span>
+                ) : user.premium_until ? (
+                  <>
+                    {fmtDate(user.premium_until)}
+                    {new Date(user.premium_until).getTime() < Date.now() ? (
+                      <span className="chip" style={{ marginLeft: 6, background: 'rgba(192,80,74,0.12)', color: 'var(--rose)' }}>expired</span>
+                    ) : null}
+                  </>
+                ) : (
+                  'No expiry'
+                )}
+              </dd>
               <dt className="muted">Visibility</dt>
               <dd style={{ margin: 0 }}>{user.is_private ? 'Private' : 'Public'}</dd>
               <dt className="muted">Language</dt>
@@ -90,6 +105,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         <UserActions
           userId={user.id}
           tier={user.subscription_tier}
+          premiumUntil={user.premium_until}
           isAdmin={user.is_admin}
           isSelf={me.id === user.id}
           username={user.username}

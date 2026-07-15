@@ -5,12 +5,36 @@ import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-/** Set a user's subscription tier (manual override / comp). */
-export async function setTier(userId: string, tier: 'freemium' | 'premium') {
+/**
+ * Set a user's subscription tier (manual override / comp).
+ *
+ * `subscription_tier` is the flag enforcement actually reads; `premium_until`
+ * records when the comped period ends (null = no expiry). Downgrading clears it.
+ * This only touches the profile — `premium_subscriptions` stays the billing
+ * provider's mirror, so a manual grant never masquerades as a real subscription.
+ *
+ * @param premiumUntil ISO date (YYYY-MM-DD) or null for no expiry.
+ */
+export async function setTier(userId: string, tier: 'freemium' | 'premium', premiumUntil: string | null = null) {
   await requireAdmin();
+
+  let until: string | null = null;
+  if (tier === 'premium' && premiumUntil) {
+    const d = new Date(premiumUntil);
+    if (Number.isNaN(d.getTime())) return { error: 'Invalid expiry date.' };
+    // End of the chosen day, so the last day is fully included.
+    d.setUTCHours(23, 59, 59, 999);
+    if (d.getTime() < Date.now()) return { error: 'Expiry date is in the past.' };
+    until = d.toISOString();
+  }
+
   const { error } = await supabaseAdmin
     .from('profiles')
-    .update({ subscription_tier: tier, updated_at: new Date().toISOString() })
+    .update({
+      subscription_tier: tier,
+      premium_until: tier === 'premium' ? until : null,
+      updated_at: new Date().toISOString(),
+    })
     .eq('id', userId);
   if (error) return { error: error.message };
   revalidatePath(`/users/${userId}`);
