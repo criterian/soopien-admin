@@ -15,7 +15,7 @@ export function BroadcastForm() {
   const [body, setBody] = useState('');
   const [segment, setSegment] = useState<Segment>('all');
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<number | null>(null);
+  const [sent, setSent] = useState<{ recipients: number; pushed: number } | null>(null);
 
   const send = () => {
     setError(null);
@@ -25,7 +25,7 @@ export function BroadcastForm() {
       const res = await broadcast({ title, body, segment });
       if ('error' in res) setError(res.error);
       else {
-        setSent(res.recipients);
+        setSent(res);
         setTitle('');
         setBody('');
       }
@@ -38,7 +38,8 @@ export function BroadcastForm() {
       {error ? <div className="error-banner">{error}</div> : null}
       {sent != null ? (
         <div className="error-banner" style={{ background: 'rgba(46,125,82,0.1)', borderColor: 'rgba(46,125,82,0.35)', color: '#1f6b43' }}>
-          ✓ Queued to {sent} recipient{sent === 1 ? '' : 's'}.
+          ✓ Saved to {sent.recipients} inbox{sent.recipients === 1 ? '' : 'es'} · pushed to {sent.pushed} device
+          {sent.pushed === 1 ? '' : 's'}.
         </div>
       ) : null}
 
