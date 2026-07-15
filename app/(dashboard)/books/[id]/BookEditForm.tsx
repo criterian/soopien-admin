@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateBook, deleteBook, type BookPatch } from '../actions';
 import type { BookDetail } from '../data';
+import { LANGUAGES, resolveLanguage } from '../languages';
 
 const num = (s: string): number | null => {
   const n = parseInt(s, 10);
@@ -11,7 +12,66 @@ const num = (s: string): number | null => {
 };
 const nn = (s: string): string | null => (s.trim() ? s.trim() : null);
 
-export function BookEditForm({ book }: { book: BookDetail }) {
+type Option = { value: string; label: string };
+
+/**
+ * Select over known options + an "add new" escape hatch for anything not listed.
+ * A value that isn't a known option (legacy/free-text data) is surfaced as its
+ * own option rather than silently dropped.
+ */
+function Picker({
+  label,
+  value,
+  onChange,
+  options,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: Option[];
+  placeholder: string;
+}) {
+  const [adding, setAdding] = useState(false);
+  const known = options.some((o) => o.value === value);
+  const opts = !value || known ? options : [{ value, label: `${value} — custom` }, ...options];
+
+  return (
+    <div className="field">
+      <label>{label}</label>
+      {adding ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={placeholder}
+            style={{ flex: 1, minWidth: 0 }}
+          />
+          <button type="button" className="btn sm" onClick={() => setAdding(false)}>
+            Done
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <select value={value} onChange={(e) => onChange(e.target.value)} style={{ flex: 1, minWidth: 0 }}>
+            <option value="">— none —</option>
+            {opts.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button type="button" className="btn sm" onClick={() => { onChange(''); setAdding(true); }} title={placeholder}>
+            + New
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function BookEditForm({ book, authors }: { book: BookDetail; authors: { id: string; name: string }[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +79,21 @@ export function BookEditForm({ book }: { book: BookDetail }) {
 
   const [f, setF] = useState({
     title: book.title ?? '',
+    // Normalize legacy 3-letter codes (`tur`) onto the canonical option (`tr`).
     author: book.author ?? '',
     publisher: book.publisher ?? '',
     isbn: book.isbn ?? '',
     edition: book.edition ?? '',
-    language: book.language ?? '',
+    language: resolveLanguage(book.language)?.code ?? book.language ?? '',
     page_count: book.page_count != null ? String(book.page_count) : '',
     synopsis: book.synopsis ?? '',
-    cover_front_url: book.cover_front_url ?? '',
-    cover_back_url: book.cover_back_url ?? '',
   });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setF((p) => ({ ...p, [k]: e.target.value }));
+    setSaved(false);
+  };
+  const setVal = (k: keyof typeof f) => (v: string) => {
+    setF((p) => ({ ...p, [k]: v }));
     setSaved(false);
   };
 
@@ -45,8 +108,6 @@ export function BookEditForm({ book }: { book: BookDetail }) {
       language: nn(f.language),
       page_count: num(f.page_count),
       synopsis: nn(f.synopsis),
-      cover_front_url: nn(f.cover_front_url),
-      cover_back_url: nn(f.cover_back_url),
     };
     start(async () => {
       const res = await updateBook(book.id, patch);
@@ -67,33 +128,52 @@ export function BookEditForm({ book }: { book: BookDetail }) {
     });
   }
 
-  const Field = ({ label, k, wide, ta }: { label: string; k: keyof typeof f; wide?: boolean; ta?: boolean }) => (
-    <div className="field" style={wide ? { gridColumn: '1 / -1' } : undefined}>
-      <label>{label}</label>
-      {ta ? (
-        <textarea rows={4} value={f[k]} onChange={set(k)} />
-      ) : (
-        <input value={f[k]} onChange={set(k)} />
-      )}
-    </div>
-  );
-
   return (
     <div className="card" style={{ padding: 20 }}>
       <h2 style={{ fontSize: 16, marginBottom: 14 }}>Edit metadata</h2>
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-        <Field label="Title" k="title" wide />
-        <Field label="Author (text)" k="author" />
-        <Field label="Publisher (text)" k="publisher" />
-        <Field label="ISBN" k="isbn" />
-        <Field label="Edition" k="edition" />
-        <Field label="Language" k="language" />
-        <Field label="Page count" k="page_count" />
-        <Field label="Cover front URL" k="cover_front_url" wide />
-        <Field label="Cover back URL" k="cover_back_url" wide />
-        <Field label="Synopsis" k="synopsis" wide ta />
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Title</label>
+          <input value={f.title} onChange={set('title')} />
+        </div>
+
+        <Picker
+          label="Author"
+          value={f.author}
+          onChange={setVal('author')}
+          options={authors.map((a) => ({ value: a.name, label: a.name }))}
+          placeholder="New author name"
+        />
+        <Picker
+          label="Language"
+          value={f.language}
+          onChange={setVal('language')}
+          options={LANGUAGES.map((l) => ({ value: l.code, label: l.name }))}
+          placeholder="Language code or name"
+        />
+
+        <div className="field">
+          <label>Publisher (text)</label>
+          <input value={f.publisher} onChange={set('publisher')} />
+        </div>
+        <div className="field">
+          <label>ISBN</label>
+          <input value={f.isbn} onChange={set('isbn')} />
+        </div>
+        <div className="field">
+          <label>Edition</label>
+          <input value={f.edition} onChange={set('edition')} />
+        </div>
+        <div className="field">
+          <label>Page count</label>
+          <input value={f.page_count} onChange={set('page_count')} />
+        </div>
+        <div className="field" style={{ gridColumn: '1 / -1' }}>
+          <label>Synopsis</label>
+          <textarea rows={4} value={f.synopsis} onChange={set('synopsis')} />
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>

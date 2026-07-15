@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { listBooks, findDuplicateIsbns, PAGE_SIZE, type BookRow } from './data';
+import { languageLabel } from './languages';
 import { fmtDate, fmtNumber } from '@/lib/format';
 
 export const metadata = { title: 'Books · Soopien Admin' };
@@ -106,7 +107,7 @@ export default async function BooksPage({
                   <td>{b.author ?? <span className="muted">—</span>}</td>
                   <td className="muted">{b.publisher ?? '—'}</td>
                   <td className="muted" style={{ fontFamily: 'monospace', fontSize: 12 }}>{b.isbn ?? '—'}</td>
-                  <td className="muted">{b.language ?? '—'}</td>
+                  <td className="muted">{languageLabel(b.language)}</td>
                   <td className="muted">{b.page_count ?? '—'}</td>
                   <td className="muted">{fmtDate(b.created_at)}</td>
                 </tr>

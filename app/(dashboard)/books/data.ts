@@ -88,6 +88,16 @@ export async function getBook(id: string): Promise<{
   };
 }
 
+/** Every author entity, for the book editor's author picker. */
+export async function listAuthorOptions(): Promise<{ id: string; name: string }[]> {
+  const { data } = await supabaseAdmin
+    .from('authors')
+    .select('id, name')
+    .order('name', { ascending: true })
+    .limit(2000);
+  return (data ?? []) as { id: string; name: string }[];
+}
+
 /** Books that share an ISBN — data-quality surfacing (PRD §4.1: no two books share an ISBN). */
 export async function findDuplicateIsbns(): Promise<{ isbn: string; count: number }[]> {
   // No SQL group-by over PostgREST; pull non-null ISBNs and tally in JS.
