@@ -1,0 +1,3 @@
+# Keeps public/ in git. Next.js serves static assets from here, and the
+# Dockerfile copies it into the runtime image — an empty dir would be dropped by
+# git and break `COPY --from=build /app/public ./public`.
