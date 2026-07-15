@@ -25,4 +25,7 @@ COPY --from=build /app/.next/static ./.next/static
 COPY --from=build /app/public ./public
 EXPOSE 3003
 ENV PORT=3003
+# Docker sets HOSTNAME to the container id; Next's standalone server would bind to
+# that instead of all interfaces, so the proxy couldn't reach it (502). Force it.
+ENV HOSTNAME=0.0.0.0
 CMD ["node", "server.js"]
