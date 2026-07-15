@@ -98,6 +98,16 @@ export async function listAuthorOptions(): Promise<{ id: string; name: string }[
   return (data ?? []) as { id: string; name: string }[];
 }
 
+/** Every publisher entity, for the book editor's publisher picker. */
+export async function listPublisherOptions(): Promise<{ id: string; name: string }[]> {
+  const { data } = await supabaseAdmin
+    .from('publishers')
+    .select('id, name')
+    .order('name', { ascending: true })
+    .limit(2000);
+  return (data ?? []) as { id: string; name: string }[];
+}
+
 /** Books that share an ISBN — data-quality surfacing (PRD §4.1: no two books share an ISBN). */
 export async function findDuplicateIsbns(): Promise<{ isbn: string; count: number }[]> {
   // No SQL group-by over PostgREST; pull non-null ISBNs and tally in JS.

@@ -71,7 +71,15 @@ function Picker({
   );
 }
 
-export function BookEditForm({ book, authors }: { book: BookDetail; authors: { id: string; name: string }[] }) {
+export function BookEditForm({
+  book,
+  authors,
+  publishers,
+}: {
+  book: BookDetail;
+  authors: { id: string; name: string }[];
+  publishers: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -154,10 +162,13 @@ export function BookEditForm({ book, authors }: { book: BookDetail; authors: { i
           placeholder="Language code or name"
         />
 
-        <div className="field">
-          <label>Publisher (text)</label>
-          <input value={f.publisher} onChange={set('publisher')} />
-        </div>
+        <Picker
+          label="Publisher"
+          value={f.publisher}
+          onChange={setVal('publisher')}
+          options={publishers.map((p) => ({ value: p.name, label: p.name }))}
+          placeholder="New publisher name"
+        />
         <div className="field">
           <label>ISBN</label>
           <input value={f.isbn} onChange={set('isbn')} />

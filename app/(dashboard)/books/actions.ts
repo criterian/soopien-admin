@@ -59,12 +59,49 @@ async function syncAuthorLink(bookId: string, next: string | null, previous: str
     .upsert({ book_id: bookId, author_id: author.id, role: 'author', position: 0 }, { onConflict: 'book_id,author_id,role' });
 }
 
+/** Find-or-create a publisher entity by normalized name (same rule as the API). */
+async function findOrCreatePublisher(name: string): Promise<{ id: string } | null> {
+  const norm = normalizeName(name);
+  if (!norm) return null;
+  const { data: existing } = await supabaseAdmin
+    .from('publishers')
+    .select('id')
+    .eq('name_normalized', norm)
+    .maybeSingle();
+  if (existing) return existing as { id: string };
+
+  const { data, error } = await supabaseAdmin
+    .from('publishers')
+    .insert({ name: name.trim(), name_normalized: norm })
+    .select('id')
+    .single();
+  if (error) return null;
+  return data as { id: string };
+}
+
+/**
+ * Keep books.publisher_id in step with the text publisher field. The API resolves
+ * this fill-only; here an admin's explicit edit is authoritative, so it re-points
+ * (or clears) the FK — but only when the name actually changed.
+ */
+async function syncPublisherLink(bookId: string, next: string | null, previous: string | null): Promise<void> {
+  if ((next ?? '') === (previous ?? '')) return;
+  if (!next) {
+    await supabaseAdmin.from('books').update({ publisher_id: null }).eq('id', bookId);
+    return;
+  }
+  const publisher = await findOrCreatePublisher(next);
+  if (!publisher) return;
+  await supabaseAdmin.from('books').update({ publisher_id: publisher.id }).eq('id', bookId);
+}
+
 /** Edit catalog metadata for a book. Covers are managed separately (see below). */
 export async function updateBook(id: string, patch: BookPatch) {
   await requireAdmin();
   if (!patch.title.trim()) return { error: 'Title is required.' };
 
-  const { data: before } = await supabaseAdmin.from('books').select('author').eq('id', id).maybeSingle();
+  const { data } = await supabaseAdmin.from('books').select('author, publisher').eq('id', id).maybeSingle();
+  const before = (data ?? null) as { author: string | null; publisher: string | null } | null;
 
   const { error } = await supabaseAdmin
     .from('books')
@@ -75,7 +112,8 @@ export async function updateBook(id: string, patch: BookPatch) {
     return { error: error.message };
   }
 
-  await syncAuthorLink(id, patch.author, (before as { author: string | null } | null)?.author ?? null);
+  await syncAuthorLink(id, patch.author, before?.author ?? null);
+  await syncPublisherLink(id, patch.publisher, before?.publisher ?? null);
 
   revalidatePath(`/books/${id}`);
   revalidatePath('/books');

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getBook, listAuthorOptions } from '../data';
+import { getBook, listAuthorOptions, listPublisherOptions } from '../data';
 import { languageLabel } from '../languages';
 import { BookEditForm } from './BookEditForm';
 import { CoverField } from './CoverField';
@@ -19,7 +19,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [res, authors] = await Promise.all([getBook(id), listAuthorOptions().catch(() => [])]);
+  const [res, authors, publishers] = await Promise.all([
+    getBook(id),
+    listAuthorOptions().catch(() => []),
+    listPublisherOptions().catch(() => []),
+  ]);
   if (!res) notFound();
   const { book, authors: linked, publisher, stats } = res;
 
@@ -41,7 +45,7 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
-        <BookEditForm book={book} authors={authors} />
+        <BookEditForm book={book} authors={authors} publishers={publishers} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 18 }}>
