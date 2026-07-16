@@ -69,7 +69,7 @@ export function AuthorEditForm({ author }: { author: AuthorDetail }) {
           disabled={pending}
           style={{ marginLeft: 'auto' }}
           onClick={() => {
-            if (window.confirm('Delete this author entity? Books keep their text author.')) run(() => deleteAuthor(author.id));
+            if (window.confirm('Delete this person? Their book and film links are removed; books/films keep their text fields.')) run(() => deleteAuthor(author.id));
           }}
         >
           Delete
