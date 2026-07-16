@@ -36,6 +36,26 @@ export async function listFilms(opts: { q?: string; page?: number; filter?: stri
   return { rows: (data ?? []) as FilmRow[], total: count ?? 0 };
 }
 
+/** Distinct director names already in the catalog, for the director picker. */
+export async function listDirectorOptions(): Promise<string[]> {
+  const { data } = await supabaseAdmin
+    .from('films')
+    .select('director')
+    .not('director', 'is', null)
+    .limit(5000);
+  const set = new Set<string>();
+  for (const r of (data ?? []) as { director: string | null }[]) if (r.director) set.add(r.director);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+/** Distinct genres present in the catalog (localized as stored), for the picker. */
+export async function listGenreOptions(): Promise<string[]> {
+  const { data } = await supabaseAdmin.from('films').select('genres').limit(5000);
+  const set = new Set<string>();
+  for (const r of (data ?? []) as { genres: string[] | null }[]) for (const g of r.genres ?? []) if (g) set.add(g);
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
 export type FilmDetail = FilmRow & {
   tmdb_id: number | null;
   imdb_id: string | null;

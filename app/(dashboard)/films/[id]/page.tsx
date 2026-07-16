@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getFilm } from '../data';
+import { getFilm, listDirectorOptions, listGenreOptions } from '../data';
 import { FilmEditForm } from './FilmEditForm';
+import { FilmMediaField } from './FilmMediaField';
 import { fmtNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export default async function FilmDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const res = await getFilm(id);
+  const [res, directors, genreOptions] = await Promise.all([
+    getFilm(id),
+    listDirectorOptions().catch(() => []),
+    listGenreOptions().catch(() => []),
+  ]);
   if (!res) notFound();
   const { film, stats } = res;
 
@@ -40,17 +45,26 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
               {film.title}
               <span className="chip">{film.media_type === 'tv' ? 'TV' : 'Movie'}</span>
             </h1>
-            <div className="sub">
-              {[film.release_year, film.director].filter(Boolean).join(' · ') || 'No details'}
-            </div>
+            <div className="sub">{[film.release_year, film.director].filter(Boolean).join(' · ') || 'No details'}</div>
           </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
-        <FilmEditForm film={film} />
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+        <FilmEditForm film={film} directors={directors} genreOptions={genreOptions} />
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="card" style={{ padding: 18 }}>
+            <h2 style={{ fontSize: 15, marginBottom: 12 }}>Media</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <FilmMediaField filmId={film.id} kind="poster" url={film.poster_url} title={film.title} aspect="2 / 3" />
+              <FilmMediaField filmId={film.id} kind="backdrop" url={film.backdrop_url} title={film.title} aspect="16 / 9" />
+            </div>
+            <div style={{ marginTop: 12 }}>
+              <FilmMediaField filmId={film.id} kind="trailer" url={film.trailer_url} title={film.title} aspect="16 / 9" />
+            </div>
+          </div>
+
           <div className="stat-grid" style={{ marginBottom: 0 }}>
             <Metric label="On shelves" value={fmtNumber(stats.watchers)} />
             <Metric label="Clips" value={fmtNumber(stats.clips)} />
@@ -68,8 +82,6 @@ export default async function FilmDetailPage({ params }: { params: Promise<{ id:
               <dd style={{ margin: 0 }}>{film.rotten_tomatoes_score != null ? `${film.rotten_tomatoes_score}%` : '—'}</dd>
               <dt className="muted">Metacritic</dt>
               <dd style={{ margin: 0 }}>{film.metacritic_score ?? '—'}</dd>
-              <dt className="muted">Genres</dt>
-              <dd style={{ margin: 0 }}>{film.genres?.length ? film.genres.join(', ') : '—'}</dd>
             </dl>
           </div>
         </div>

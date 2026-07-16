@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getBook, listAuthorOptions, listPublisherOptions } from '../data';
-import { languageLabel } from '../languages';
+import { languageLabel } from '@/lib/languages';
 import { BookEditForm } from './BookEditForm';
 import { CoverField } from './CoverField';
 import { fmtNumber } from '@/lib/format';

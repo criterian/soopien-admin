@@ -4,6 +4,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { updateFilm, deleteFilm, type FilmPatch } from '../actions';
 import type { FilmDetail } from '../data';
+import { LANGUAGES, resolveLanguage } from '@/lib/languages';
+import { Picker } from '@/components/Picker';
+import { TagPicker } from '@/components/TagPicker';
 
 const nn = (s: string): string | null => (s.trim() ? s.trim() : null);
 const int = (s: string): number | null => {
@@ -11,7 +14,15 @@ const int = (s: string): number | null => {
   return Number.isFinite(n) && n > 0 ? n : null;
 };
 
-export function FilmEditForm({ film }: { film: FilmDetail }) {
+export function FilmEditForm({
+  film,
+  directors,
+  genreOptions,
+}: {
+  film: FilmDetail;
+  directors: string[];
+  genreOptions: string[];
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -23,15 +34,17 @@ export function FilmEditForm({ film }: { film: FilmDetail }) {
     director: film.director ?? '',
     media_type: (film.media_type as 'movie' | 'tv') ?? 'movie',
     runtime_minutes: film.runtime_minutes != null ? String(film.runtime_minutes) : '',
-    language: film.language ?? '',
-    genres: (film.genres ?? []).join(', '),
+    language: resolveLanguage(film.language)?.code ?? film.language ?? '',
     synopsis: film.synopsis ?? '',
-    poster_url: film.poster_url ?? '',
-    backdrop_url: film.backdrop_url ?? '',
-    trailer_url: film.trailer_url ?? '',
   });
+  const [genres, setGenres] = useState<string[]>(film.genres ?? []);
+
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setF((p) => ({ ...p, [k]: e.target.value }));
+    setSaved(false);
+  };
+  const setVal = (k: keyof typeof f) => (v: string) => {
+    setF((p) => ({ ...p, [k]: v }));
     setSaved(false);
   };
 
@@ -44,11 +57,8 @@ export function FilmEditForm({ film }: { film: FilmDetail }) {
       media_type: f.media_type,
       runtime_minutes: int(f.runtime_minutes),
       language: nn(f.language),
-      genres: f.genres.split(',').map((g) => g.trim()).filter(Boolean),
+      genres,
       synopsis: nn(f.synopsis),
-      poster_url: nn(f.poster_url),
-      backdrop_url: nn(f.backdrop_url),
-      trailer_url: nn(f.trailer_url),
     };
     start(async () => {
       const res = await updateFilm(film.id, patch);
@@ -90,34 +100,29 @@ export function FilmEditForm({ film }: { film: FilmDetail }) {
           <label>Release year</label>
           <input value={f.release_year} onChange={set('release_year')} />
         </div>
-        <div className="field">
-          <label>Director</label>
-          <input value={f.director} onChange={set('director')} />
-        </div>
+
+        <Picker
+          label="Director"
+          value={f.director}
+          onChange={setVal('director')}
+          options={directors.map((d) => ({ value: d, label: d }))}
+          placeholder="New director name"
+        />
+        <Picker
+          label="Language"
+          value={f.language}
+          onChange={setVal('language')}
+          options={LANGUAGES.map((l) => ({ value: l.code, label: l.name }))}
+          placeholder="Language code or name"
+        />
+
         <div className="field">
           <label>Runtime (min)</label>
           <input value={f.runtime_minutes} onChange={set('runtime_minutes')} />
         </div>
-        <div className="field">
-          <label>Language</label>
-          <input value={f.language} onChange={set('language')} />
-        </div>
-        <div className="field">
-          <label>Genres (comma-separated)</label>
-          <input value={f.genres} onChange={set('genres')} />
-        </div>
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Poster URL</label>
-          <input value={f.poster_url} onChange={set('poster_url')} />
-        </div>
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Backdrop URL</label>
-          <input value={f.backdrop_url} onChange={set('backdrop_url')} />
-        </div>
-        <div className="field" style={{ gridColumn: '1 / -1' }}>
-          <label>Trailer URL</label>
-          <input value={f.trailer_url} onChange={set('trailer_url')} />
-        </div>
+
+        <TagPicker label="Genres" values={genres} onChange={(v) => { setGenres(v); setSaved(false); }} options={genreOptions} placeholder="Add a genre…" />
+
         <div className="field" style={{ gridColumn: '1 / -1' }}>
           <label>Synopsis</label>
           <textarea rows={4} value={f.synopsis} onChange={set('synopsis')} />

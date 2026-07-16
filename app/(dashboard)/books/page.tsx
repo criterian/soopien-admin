@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { listBooks, findDuplicateIsbns, PAGE_SIZE, type BookRow } from './data';
-import { languageLabel } from './languages';
+import { languageLabel } from '@/lib/languages';
 import { fmtDate, fmtNumber } from '@/lib/format';
 
 export const metadata = { title: 'Books · Soopien Admin' };
