@@ -3,22 +3,10 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getClip } from '../data';
 import { ClipModeration, DeleteComment } from './ClipModeration';
+import { ClipTemplate } from './ClipTemplate';
 import { fmtDateTime, fmtNumber, initials } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
-
-/** Pull the first http(s) URL out of a value (metadata often nests media URLs). */
-function firstUrl(v: unknown): string | null {
-  if (typeof v === 'string' && /^https?:\/\//.test(v)) return v;
-  if (v && typeof v === 'object') {
-    for (const val of Object.values(v)) {
-      const u = firstUrl(val);
-      if (u) return u;
-    }
-  }
-  return null;
-}
-const isImageUrl = (u: string) => /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(u);
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
@@ -39,10 +27,10 @@ export default async function ClipDetailPage({ params }: { params: Promise<{ id:
   const source = clip.book ?? clip.film;
   const sourceKind = clip.book ? 'book' : clip.film ? 'film' : null;
   const sourceImg = clip.book?.cover_front_url ?? clip.film?.poster_url ?? null;
-  const metaImg = clip.metadata ? firstUrl(clip.metadata) : null;
   const metaEntries = Object.entries(clip.metadata ?? {}).filter(
     ([, v]) => v != null && (typeof v !== 'object' || Array.isArray(v)),
   );
+  const hasMeta = Object.keys(clip.metadata ?? {}).length > 0;
 
   return (
     <div>
@@ -72,54 +60,13 @@ export default async function ClipDetailPage({ params }: { params: Promise<{ id:
         {/* ── Content ─────────────────────────────────────────── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 20 }}>
-            {clip.primary_text ? (
-              <blockquote
-                style={{
-                  margin: 0,
-                  fontFamily: 'var(--font-serif)',
-                  fontSize: 20,
-                  lineHeight: 1.5,
-                  color: 'var(--text)',
-                  borderLeft: '3px solid var(--terracotta)',
-                  paddingLeft: 16,
-                }}
-              >
-                {clip.primary_text}
-              </blockquote>
-            ) : (
-              <span className="muted">(no primary text)</span>
-            )}
-
-            {clip.secondary_text ? (
-              <div style={{ marginTop: 12, color: 'var(--text2)', fontSize: 14 }}>{clip.secondary_text}</div>
-            ) : null}
-
-            {clip.note ? (
-              <div style={{ marginTop: 14, padding: 12, background: 'var(--bg-elev)', borderRadius: 8, fontSize: 13.5, color: 'var(--text2)' }}>
-                <span className="muted" style={{ fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.5 }}>Note</span>
-                <div style={{ marginTop: 4, whiteSpace: 'pre-wrap' }}>{clip.note}</div>
-              </div>
-            ) : null}
-
-            {metaImg && isImageUrl(metaImg) ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={metaImg} alt="" style={{ marginTop: 14, maxWidth: '100%', maxHeight: 360, borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
-            ) : null}
-
-            <div style={{ marginTop: 14, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {clip.page != null ? <span className="chip">page {clip.page}</span> : null}
-              {clip.external_url ? (
-                <a className="btn sm" href={clip.external_url} target="_blank" rel="noreferrer">
-                  Open link ↗
-                </a>
-              ) : null}
-            </div>
+            <ClipTemplate clip={clip} />
           </div>
 
-          {/* Metadata */}
-          {metaEntries.length > 0 || Object.keys(clip.metadata ?? {}).length > 0 ? (
+          {/* Raw metadata (developer view) */}
+          {hasMeta ? (
             <div className="card" style={{ padding: 18 }}>
-              <h2 style={{ fontSize: 15, marginBottom: 12 }}>Details</h2>
+              <h2 style={{ fontSize: 15, marginBottom: 12 }}>Metadata (raw)</h2>
               {metaEntries.length > 0 ? (
                 <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '130px 1fr', rowGap: 8, columnGap: 12, fontSize: 13 }}>
                   {metaEntries.map(([k, v]) => (
