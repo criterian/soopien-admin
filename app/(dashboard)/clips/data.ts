@@ -44,3 +44,69 @@ export async function listClips(opts: { q?: string; page?: number; filter?: stri
   if (error) throw new Error(error.message);
   return { rows: (data ?? []) as unknown as ClipRow[], total: count ?? 0 };
 }
+
+export type ClipComment = {
+  id: string;
+  body: string;
+  created_at: string;
+  user_id: string;
+  author: { username: string; display_name: string | null } | null;
+};
+
+export type ClipDetail = {
+  id: string;
+  type: string;
+  primary_text: string | null;
+  secondary_text: string | null;
+  note: string | null;
+  external_url: string | null;
+  page: number | null;
+  metadata: Record<string, unknown>;
+  is_private: boolean;
+  contains_spoilers: boolean;
+  mature_content: boolean;
+  created_at: string;
+  user_id: string;
+  profile: { id: string; username: string; display_name: string | null; avatar_url: string | null } | null;
+  book: { id: string; title: string; cover_front_url: string | null } | null;
+  film: { id: string; title: string; poster_url: string | null } | null;
+};
+
+export async function getClip(id: string): Promise<{
+  clip: ClipDetail;
+  likes: number;
+  comments: ClipComment[];
+  collections: { id: string; name: string }[];
+} | null> {
+  const { data } = await supabaseAdmin
+    .from('clips')
+    .select(
+      'id, type, primary_text, secondary_text, note, external_url, page, metadata, is_private, contains_spoilers, mature_content, created_at, user_id, profile:profiles(id, username, display_name, avatar_url), book:books(id, title, cover_front_url), film:films(id, title, poster_url)',
+    )
+    .eq('id', id)
+    .maybeSingle();
+  if (!data) return null;
+
+  const [likesRes, commentsRes, collectionsRes] = await Promise.all([
+    supabaseAdmin.from('clip_likes').select('*', { count: 'exact', head: true }).eq('clip_id', id),
+    supabaseAdmin
+      .from('clip_comments')
+      .select('id, body, created_at, user_id, author:profiles(username, display_name)')
+      .eq('clip_id', id)
+      .order('created_at', { ascending: true })
+      .limit(500),
+    supabaseAdmin.from('collection_clips').select('collection:collections(id, name)').eq('clip_id', id).limit(100),
+  ]);
+
+  const collections = ((collectionsRes.data ?? []) as any[])
+    .map((r) => r.collection)
+    .filter(Boolean)
+    .map((c: any) => ({ id: c.id, name: c.name }));
+
+  return {
+    clip: data as unknown as ClipDetail,
+    likes: likesRes.count ?? 0,
+    comments: (commentsRes.data ?? []) as unknown as ClipComment[],
+    collections,
+  };
+}

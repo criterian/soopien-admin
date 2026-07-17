@@ -94,9 +94,9 @@ export default async function ClipsPage({
               rows.map((c) => (
                 <tr key={c.id}>
                   <td className="primary" style={{ maxWidth: 340 }}>
-                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <Link href={`/clips/${c.id}`} style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {c.primary_text || <span className="muted">(no text)</span>}
-                    </div>
+                    </Link>
                     {c.book?.title || c.film?.title ? (
                       <div className="muted" style={{ fontSize: 12 }}>
                         from {c.book?.title ?? c.film?.title}
