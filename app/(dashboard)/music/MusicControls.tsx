@@ -5,16 +5,16 @@ import { useRouter } from 'next/navigation';
 import { createTrack, setTrackActive, deleteTrack } from './actions';
 import { MUSIC_CATEGORIES, type MusicCategoryKey } from './constants';
 
-export function AddTrackForm({ uploadEnabled }: { uploadEnabled: boolean }) {
+export function AddTrackForm({ uploadEnabled, defaultCategory }: { uploadEnabled: boolean; defaultCategory?: MusicCategoryKey }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [category, setCategory] = useState<MusicCategoryKey>(MUSIC_CATEGORIES[0].key);
+  const [category, setCategory] = useState<MusicCategoryKey>(defaultCategory ?? MUSIC_CATEGORIES[0].key);
   const [title, setTitle] = useState('');
   const [key, setKey] = useState('');
   const [dur, setDur] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [showKey, setShowKey] = useState(!uploadEnabled);
+  const [showKey, setShowKey] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,23 +76,22 @@ export function AddTrackForm({ uploadEnabled }: { uploadEnabled: boolean }) {
         </select>
       </div>
 
-      {uploadEnabled ? (
-        <div className="field">
-          <label>Audio file</label>
-          <input ref={fileRef} type="file" accept="audio/*" onChange={onFile} />
-          {file ? (
-            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
-              {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB{dur ? ` · ${dur}s` : ''}
-            </div>
-          ) : (
-            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uploads to R2 as {category}/&lt;title&gt;.ext</div>
-          )}
-        </div>
-      ) : (
-        <div className="error-banner" style={{ background: 'var(--fill)', borderColor: 'var(--border)', color: 'var(--text3)' }}>
-          Audio upload is off (R2 not configured). Reference an existing R2 object by storage key below.
-        </div>
-      )}
+      <div className="field">
+        <label>Audio file</label>
+        <input ref={fileRef} type="file" accept="audio/*" onChange={onFile} disabled={!uploadEnabled} />
+        {!uploadEnabled ? (
+          <div style={{ fontSize: 12, marginTop: 4, color: 'var(--rose)' }}>
+            Uploads are off — set the <code>R2_*</code> env on the server (then redeploy) to enable. You can still
+            add a track by storage key below.
+          </div>
+        ) : file ? (
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+            {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB{dur ? ` · ${dur}s` : ''}
+          </div>
+        ) : (
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uploads to R2 as {category}/&lt;title&gt;.ext</div>
+        )}
+      </div>
 
       <div className="field">
         <label>Title</label>
@@ -109,7 +108,7 @@ export function AddTrackForm({ uploadEnabled }: { uploadEnabled: boolean }) {
           {showKey ? 'Hide' : 'Advanced: use an existing R2 key'}
         </button>
       ) : null}
-      {showKey ? (
+      {showKey || !uploadEnabled ? (
         <div className="field">
           <label>Storage key (R2 object key)</label>
           <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="lofi_focus/soopien_lofi_001.m4a" />
