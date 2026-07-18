@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { r2Configured, putTrack } from '@/lib/r2';
+import { r2Configured, putTrack, deleteTrackObject } from '@/lib/r2';
 import { CATEGORY_BY_KEY, type MusicCategoryKey } from './constants';
 
 /** Whether audio upload is available (R2 configured on the server). */
@@ -102,8 +102,24 @@ export async function setTrackActive(id: string, active: boolean) {
 
 export async function deleteTrack(id: string) {
   await requireAdmin();
+
+  // Grab the storage_key so we can remove the audio file from R2 too.
+  const { data: track } = await supabaseAdmin.from('music_tracks').select('storage_key').eq('id', id).maybeSingle();
+  const storageKey = (track as { storage_key?: string } | null)?.storage_key ?? null;
+
   const { error } = await supabaseAdmin.from('music_tracks').delete().eq('id', id);
   if (error) return { error: error.message };
+
+  // Delete the R2 object — but only if no other track still points at the same
+  // key (guards against a manually-referenced or duplicated storage_key).
+  if (storageKey) {
+    const { count } = await supabaseAdmin
+      .from('music_tracks')
+      .select('*', { count: 'exact', head: true })
+      .eq('storage_key', storageKey);
+    if ((count ?? 0) === 0) await deleteTrackObject(storageKey);
+  }
+
   revalidatePath('/music');
   return { ok: true };
 }

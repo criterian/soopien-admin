@@ -1,5 +1,5 @@
 import 'server-only';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Cloudflare R2 (S3-compatible) writer for the reading-music library. The mobile
@@ -39,4 +39,14 @@ export async function putTrack(key: string, body: Buffer, contentType: string): 
   await r2().send(
     new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, Body: body, ContentType: contentType }),
   );
+}
+
+/** Remove a track object from the music bucket. Best-effort — never throws. */
+export async function deleteTrackObject(key: string): Promise<void> {
+  if (!r2Configured()) return;
+  try {
+    await r2().send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));
+  } catch (e) {
+    console.warn('[r2] delete failed:', (e as Error).message);
+  }
 }
