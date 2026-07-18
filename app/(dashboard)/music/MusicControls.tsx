@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createTrack, setTrackActive, deleteTrack } from './actions';
 import { MUSIC_CATEGORIES, type MusicCategoryKey } from './constants';
 
-export function AddTrackForm() {
+export function AddTrackForm({ uploadEnabled }: { uploadEnabled: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -13,21 +13,48 @@ export function AddTrackForm() {
   const [title, setTitle] = useState('');
   const [key, setKey] = useState('');
   const [dur, setDur] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [showKey, setShowKey] = useState(!uploadEnabled);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] ?? null;
+    setFile(f);
+    setError(null);
+    if (!f) return;
+    // Auto-fill title from the filename (minus extension), if empty.
+    if (!title.trim()) setTitle(f.name.replace(/\.[^.]+$/, ''));
+    // Read duration from the audio metadata.
+    const url = URL.createObjectURL(f);
+    const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.onloadedmetadata = () => {
+      if (Number.isFinite(audio.duration)) setDur(String(Math.round(audio.duration)));
+      URL.revokeObjectURL(url);
+    };
+    audio.src = url;
+  };
+
+  const canSubmit = !pending && title.trim() && (file || key.trim());
 
   const submit = () => {
     setError(null);
+    const fd = new FormData();
+    fd.set('category', category);
+    fd.set('title', title);
+    fd.set('duration_seconds', dur);
+    if (file) fd.set('file', file);
+    if (key.trim()) fd.set('storage_key', key.trim());
+
     start(async () => {
-      const res = await createTrack({
-        category,
-        title,
-        storage_key: key,
-        duration_seconds: dur.trim() ? parseInt(dur, 10) : null,
-      });
+      const res = await createTrack(fd);
       if (res?.error) setError(res.error);
       else {
         setTitle('');
         setKey('');
         setDur('');
+        setFile(null);
+        if (fileRef.current) fileRef.current.value = '';
         router.refresh();
       }
     });
@@ -37,6 +64,7 @@ export function AddTrackForm() {
     <div className="card" style={{ padding: 18 }}>
       <h2 style={{ fontSize: 15, marginBottom: 12 }}>Add track</h2>
       {error ? <div className="error-banner">{error}</div> : null}
+
       <div className="field">
         <label>Category</label>
         <select value={category} onChange={(e) => setCategory(e.target.value as MusicCategoryKey)}>
@@ -47,20 +75,50 @@ export function AddTrackForm() {
           ))}
         </select>
       </div>
+
+      {uploadEnabled ? (
+        <div className="field">
+          <label>Audio file</label>
+          <input ref={fileRef} type="file" accept="audio/*" onChange={onFile} />
+          {file ? (
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>
+              {file.name} · {(file.size / 1024 / 1024).toFixed(1)} MB{dur ? ` · ${dur}s` : ''}
+            </div>
+          ) : (
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Uploads to R2 as {category}/&lt;title&gt;.ext</div>
+          )}
+        </div>
+      ) : (
+        <div className="error-banner" style={{ background: 'var(--fill)', borderColor: 'var(--border)', color: 'var(--text3)' }}>
+          Audio upload is off (R2 not configured). Reference an existing R2 object by storage key below.
+        </div>
+      )}
+
       <div className="field">
         <label>Title</label>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="soopien_lofi_001" />
       </div>
-      <div className="field">
-        <label>Storage key (R2 object key)</label>
-        <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="lofi_focus/soopien_lofi_001.m3u8" />
-      </div>
+
       <div className="field">
         <label>Duration (seconds, optional)</label>
         <input value={dur} onChange={(e) => setDur(e.target.value.replace(/[^0-9]/g, ''))} inputMode="numeric" />
       </div>
-      <button className="btn primary" disabled={pending || !title.trim() || !key.trim()} onClick={submit} style={{ width: '100%', justifyContent: 'center' }}>
-        {pending ? 'Adding…' : 'Add track'}
+
+      {uploadEnabled ? (
+        <button type="button" className="btn sm" onClick={() => setShowKey((s) => !s)} style={{ marginBottom: 10 }}>
+          {showKey ? 'Hide' : 'Advanced: use an existing R2 key'}
+        </button>
+      ) : null}
+      {showKey ? (
+        <div className="field">
+          <label>Storage key (R2 object key)</label>
+          <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="lofi_focus/soopien_lofi_001.m4a" />
+          <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>Used only when no file is uploaded.</div>
+        </div>
+      ) : null}
+
+      <button className="btn primary" disabled={!canSubmit} onClick={submit} style={{ width: '100%', justifyContent: 'center' }}>
+        {pending ? (file ? 'Uploading…' : 'Adding…') : 'Add track'}
       </button>
     </div>
   );

@@ -1,5 +1,6 @@
 import { listTracks, type TrackRow } from './data';
 import { AddTrackForm, TrackControls } from './MusicControls';
+import { isUploadEnabled } from './actions';
 import { CATEGORY_BY_KEY } from './constants';
 import { fmtNumber } from '@/lib/format';
 
@@ -14,6 +15,7 @@ function dur(s: number | null): string {
 }
 
 export default async function MusicPage() {
+  const uploadEnabled = await isUploadEnabled();
   let tracks: TrackRow[] = [];
   let error: string | null = null;
   try {
@@ -79,7 +81,7 @@ export default async function MusicPage() {
           )}
         </div>
 
-        <AddTrackForm />
+        <AddTrackForm uploadEnabled={uploadEnabled} />
       </div>
     </div>
   );
