@@ -49,6 +49,8 @@ const GROUPS: Group[] = [
     items: [
       { href: '/subscriptions', label: 'Subscriptions', icon: '✦' },
       { href: '/payouts', label: 'Payouts', icon: '➦' },
+      { href: '/affiliates', label: 'Affiliate analytics', icon: '⤢' },
+      { href: '/affiliates/config', label: 'Affiliate config', icon: '⚑' },
     ],
   },
   {
