@@ -1,5 +1,6 @@
 import 'server-only';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 /**
  * Cloudflare R2 (S3-compatible) writer for the reading-music library. The mobile
@@ -39,6 +40,19 @@ export async function putTrack(key: string, body: Buffer, contentType: string): 
   await r2().send(
     new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, Body: body, ContentType: contentType }),
   );
+}
+
+/** Presign a short-lived GET URL to play a track object (like the app does). */
+export async function signedTrackGetUrl(key: string, ttlSeconds = 60 * 60): Promise<string | null> {
+  if (!r2Configured()) return null;
+  try {
+    return await getSignedUrl(r2(), new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }), {
+      expiresIn: ttlSeconds,
+    });
+  } catch (e) {
+    console.warn('[r2] sign failed:', (e as Error).message);
+    return null;
+  }
 }
 
 /** Remove a track object from the music bucket. Best-effort — never throws. */

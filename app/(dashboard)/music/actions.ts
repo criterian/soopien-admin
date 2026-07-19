@@ -3,12 +3,24 @@
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
-import { r2Configured, putTrack, deleteTrackObject } from '@/lib/r2';
+import { r2Configured, putTrack, deleteTrackObject, signedTrackGetUrl } from '@/lib/r2';
 import { CATEGORY_BY_KEY, type MusicCategoryKey } from './constants';
 
 /** Whether audio upload is available (R2 configured on the server). */
 export async function isUploadEnabled(): Promise<boolean> {
   return r2Configured();
+}
+
+/** A short-lived signed URL to play a track (server presigns; R2 stays private). */
+export async function getTrackUrl(id: string): Promise<{ url: string } | { error: string }> {
+  await requireAdmin();
+  if (!r2Configured()) return { error: 'Playback is off — R2 is not configured on the server.' };
+  const { data } = await supabaseAdmin.from('music_tracks').select('storage_key').eq('id', id).maybeSingle();
+  const key = (data as { storage_key?: string } | null)?.storage_key;
+  if (!key) return { error: 'Track not found.' };
+  const url = await signedTrackGetUrl(key);
+  if (!url) return { error: 'Could not sign the track URL.' };
+  return { url };
 }
 
 const AUDIO_EXT: Record<string, string> = {

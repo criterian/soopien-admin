@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { listTracks, type TrackRow } from './data';
 import { AddTrackForm, TrackControls } from './MusicControls';
+import { MusicPlayerProvider, PlayButton } from './MusicPlayer';
 import { isUploadEnabled } from './actions';
 import { MUSIC_CATEGORIES, CATEGORY_BY_KEY, type MusicCategoryKey } from './constants';
 import { fmtNumber } from '@/lib/format';
@@ -44,7 +45,7 @@ export default async function MusicPage({
   const list = tracks.filter((t) => t.category === active);
 
   return (
-    <div>
+    <MusicPlayerProvider>
       <div className="page-head">
         <div>
           <h1>Music library</h1>
@@ -98,7 +99,10 @@ export default async function MusicPage({
                       <td className="muted">{dur(t.duration_seconds)}</td>
                       <td>{t.active ? <span className="chip new">active</span> : <span className="chip archived">off</span>}</td>
                       <td>
-                        <TrackControls id={t.id} active={t.active} />
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center' }}>
+                          <PlayButton id={t.id} title={t.title} category={meta?.label} />
+                          <TrackControls id={t.id} active={t.active} />
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -110,6 +114,6 @@ export default async function MusicPage({
 
         <AddTrackForm key={active} uploadEnabled={uploadEnabled} defaultCategory={active} />
       </div>
-    </div>
+    </MusicPlayerProvider>
   );
 }
