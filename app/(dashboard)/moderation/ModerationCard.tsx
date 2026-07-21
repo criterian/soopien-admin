@@ -53,39 +53,69 @@ export function ModerationCard({ group }: { group: ModerationGroup }) {
         {p.deleted ? (
           <span className="muted">⚠ Content already removed or unavailable.</span>
         ) : p.kind === 'clip' ? (
-          <div>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
-              <span className="chip">{p.type}</span>
-              {p.source ? <span className="muted" style={{ fontSize: 12.5 }}>from {p.source}</span> : null}
-              {p.isPrivate ? <span className="chip private">private</span> : null}
-              {p.spoiler ? <span className="chip">spoiler</span> : null}
-              {p.mature ? <span className="chip admin">mature</span> : null}
-            </div>
-            <div style={{ color: 'var(--text)', fontWeight: 500 }}>{p.title || <span className="muted">(no text)</span>}</div>
-            {p.body ? <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{p.body}</div> : null}
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              by{' '}
-              {p.ownerId ? (
-                <Link href={`/users/${p.ownerId}`} style={{ color: 'var(--terracotta)' }}>
-                  @{p.ownerName ?? p.ownerId.slice(0, 8)}
+          <div style={{ display: 'flex', gap: 12 }}>
+            {/* Media clips (capture/place/video/…) carry no text — show the image. */}
+            {p.thumb ? (
+              <Link href={`/clips/${p.id}`} style={{ flexShrink: 0 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={p.thumb}
+                  alt=""
+                  style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--fill)', display: 'block' }}
+                />
+              </Link>
+            ) : p.media ? (
+              <div style={{ width: 96, height: 96, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--fill)', display: 'grid', placeItems: 'center', flexShrink: 0, fontSize: 22 }}>
+                {p.media === 'video' ? '▶' : '♪'}
+              </div>
+            ) : null}
+
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                <span className="chip">{p.type}</span>
+                {p.source ? <span className="muted" style={{ fontSize: 12.5 }}>from {p.source}</span> : null}
+                {p.isPrivate ? <span className="chip private">private</span> : null}
+                {p.spoiler ? <span className="chip">spoiler</span> : null}
+                {p.mature ? <span className="chip admin">mature</span> : null}
+              </div>
+              <div style={{ color: 'var(--text)', fontWeight: 500 }}>
+                {p.title || <span className="muted">{p.media || p.thumb ? '(media clip — no text)' : '(no text)'}</span>}
+              </div>
+              {p.body ? <div className="muted" style={{ fontSize: 13, marginTop: 2 }}>{p.body}</div> : null}
+              <div className="muted" style={{ fontSize: 12, marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <span>
+                  by{' '}
+                  {p.ownerId ? (
+                    <Link href={`/users/${p.ownerId}`} style={{ color: 'var(--terracotta)' }}>
+                      @{p.ownerName ?? p.ownerId.slice(0, 8)}
+                    </Link>
+                  ) : (
+                    '—'
+                  )}
+                </span>
+                <Link href={`/clips/${p.id}`} style={{ color: 'var(--terracotta)' }}>
+                  View full clip →
                 </Link>
-              ) : (
-                '—'
-              )}
+              </div>
             </div>
           </div>
         ) : p.kind === 'comment' ? (
           <div>
             <div style={{ color: 'var(--text)' }}>{p.body}</div>
-            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-              comment by{' '}
-              {p.ownerId ? (
-                <Link href={`/users/${p.ownerId}`} style={{ color: 'var(--terracotta)' }}>
-                  view user
-                </Link>
-              ) : (
-                '—'
-              )}
+            <div className="muted" style={{ fontSize: 12, marginTop: 6, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <span>
+                comment by{' '}
+                {p.ownerId ? (
+                  <Link href={`/users/${p.ownerId}`} style={{ color: 'var(--terracotta)' }}>
+                    view user
+                  </Link>
+                ) : (
+                  '—'
+                )}
+              </span>
+              <Link href={`/clips/${p.clipId}`} style={{ color: 'var(--terracotta)' }}>
+                View clip →
+              </Link>
             </div>
           </div>
         ) : p.kind === 'profile' ? (

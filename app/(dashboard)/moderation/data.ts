@@ -18,10 +18,36 @@ type ReportRow = {
 
 /** A preview of the reported item, resolved from the appropriate table. */
 export type TargetPreview =
-  | { kind: 'clip'; id: string; title: string | null; body: string | null; type: string; ownerId: string | null; ownerName: string | null; isPrivate: boolean; spoiler: boolean; mature: boolean; source: string | null; deleted?: false }
+  | { kind: 'clip'; id: string; title: string | null; body: string | null; type: string; ownerId: string | null; ownerName: string | null; isPrivate: boolean; spoiler: boolean; mature: boolean; source: string | null; thumb: string | null; media: 'image' | 'video' | 'audio' | null; deleted?: false }
   | { kind: 'comment'; id: string; body: string; ownerId: string | null; clipId: string; deleted?: false }
   | { kind: 'profile'; id: string; username: string; displayName: string | null; deleted?: false }
   | { kind: ReportTargetType; id: string; deleted: true };
+
+/**
+ * A representative image for a clip, pulled from whichever metadata shape its
+ * type uses. Capture clips (book_page/film_scene/capture_*) carry no text at
+ * all, so without this the queue shows "(no text)" and the moderator can't see
+ * what was actually reported.
+ */
+function clipThumb(metadata: unknown): { thumb: string | null; media: 'image' | 'video' | 'audio' | null } {
+  const m = (metadata ?? {}) as Record<string, any>;
+  const cap = m.capture;
+  if (cap?.url) {
+    if (cap.media === 'image') return { thumb: cap.url, media: 'image' };
+    return { thumb: cap.thumbnail ?? null, media: cap.media ?? null }; // video/audio
+  }
+  const first =
+    m.place?.photoUrl ??
+    m.place?.photoUrls?.[0] ??
+    m.video?.thumbnail ??
+    m.music?.thumbnail ??
+    m.film?.poster ??
+    m.wikipedia?.thumbnail ??
+    m.web_page?.image ??
+    m.ai?.image ??
+    null;
+  return { thumb: typeof first === 'string' ? first : null, media: null };
+}
 
 /** One reported item, with all reports filed against it. */
 export type ModerationGroup = {
@@ -97,14 +123,15 @@ async function hydrateClips(ids: string[], groups: Map<string, ModerationGroup>)
   if (!ids.length) return;
   const { data } = await supabaseAdmin
     .from('clips')
-    .select('id, type, primary_text, note, user_id, is_private, contains_spoilers, mature_content, book:books(title), film:films(title), profile:profiles(username)')
+    .select('id, type, primary_text, secondary_text, note, metadata, user_id, is_private, contains_spoilers, mature_content, book:books(title), film:films(title), profile:profiles(username)')
     .in('id', ids);
   for (const c of (data ?? []) as any[]) {
     const g = groups.get(`clip:${c.id}`);
+    const { thumb, media } = clipThumb(c.metadata);
     if (g) g.preview = {
       kind: 'clip',
       id: c.id,
-      title: c.primary_text ?? null,
+      title: c.primary_text ?? c.secondary_text ?? null,
       body: c.note ?? null,
       type: c.type,
       ownerId: c.user_id ?? null,
@@ -113,6 +140,8 @@ async function hydrateClips(ids: string[], groups: Map<string, ModerationGroup>)
       spoiler: !!c.contains_spoilers,
       mature: !!c.mature_content,
       source: c.book?.title ?? c.film?.title ?? null,
+      thumb,
+      media,
     };
   }
 }
