@@ -37,3 +37,19 @@ export async function getFreemiumConfig(): Promise<LimitValue[]> {
     overridden: overrides.has(d.name),
   }));
 }
+
+/**
+ * Feature flag: may free (non-Premium) users export/share clips & collections as
+ * images? Stored in app_config.free_export_enabled; defaults to ON (open to all)
+ * when unset. Mirrors the API's isFreeExportEnabled() fail-open behaviour.
+ */
+export async function getFreeExportEnabled(): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('app_config')
+    .select('value')
+    .eq('key', 'free_export_enabled')
+    .maybeSingle();
+  const v = (data as { value?: unknown } | null)?.value;
+  if (v == null) return true; // default: open to everyone
+  return v !== false && v !== 'false' && v !== 0;
+}

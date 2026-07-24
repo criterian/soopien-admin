@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
+import { callAdminApi } from '@/lib/adminApi';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 import { LIMIT_DEFS, type LimitName } from './data';
 
@@ -26,4 +27,20 @@ export async function setLimit(name: LimitName, value: number | null) {
   }
   revalidatePath('/config');
   return { ok: true };
+}
+
+/**
+ * Toggle whether free (non-Premium) users may export/share clips & collections.
+ * Routed through the API (not a direct app_config write) so the API validates
+ * and busts its config cache — the change is live immediately, not after ~30s.
+ */
+export async function setFreeExport(enabled: boolean) {
+  await requireAdmin();
+  const res = await callAdminApi<{ freeExportEnabled: boolean }>('/admin/config/free-export', {
+    method: 'PUT',
+    body: { enabled },
+  });
+  if (!res.ok) return { error: res.error };
+  revalidatePath('/config');
+  return { ok: true as const };
 }

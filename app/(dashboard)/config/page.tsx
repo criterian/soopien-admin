@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { getFreemiumConfig } from './data';
+import { getFreeExportEnabled, getFreemiumConfig } from './data';
+import { FreeExportToggle } from './FreeExportToggle';
 import { LimitRow } from './LimitRow';
 
 export const metadata = { title: 'Limits & config · Soopien Admin' };
@@ -7,9 +8,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ConfigPage() {
   let limits: Awaited<ReturnType<typeof getFreemiumConfig>> = [];
+  let freeExport = true;
   let error: string | null = null;
   try {
-    limits = await getFreemiumConfig();
+    [limits, freeExport] = await Promise.all([getFreemiumConfig(), getFreeExportEnabled()]);
   } catch (e) {
     error = e instanceof Error ? e.message : 'Failed to load config';
   }
@@ -26,10 +28,13 @@ export default async function ConfigPage() {
       {error ? <div className="error-banner">{error}</div> : null}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 24, alignItems: 'start' }}>
-        <div className="card" style={{ padding: '4px 20px 16px' }}>
-          {limits.map((l) => (
-            <LimitRow key={l.name} limit={l} />
-          ))}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <FreeExportToggle enabled={freeExport} />
+          <div className="card" style={{ padding: '4px 20px 16px' }}>
+            {limits.map((l) => (
+              <LimitRow key={l.name} limit={l} />
+            ))}
+          </div>
         </div>
 
         <div className="card" style={{ padding: 18 }}>
