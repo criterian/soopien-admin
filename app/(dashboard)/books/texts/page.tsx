@@ -11,8 +11,18 @@ export const dynamic = 'force-dynamic';
  * together, and the API is already where every decision about what may be
  * stored lives.
  */
-export default async function BulkTextsPage() {
-  const res = await callAdminApi<{ books: BookRow[] }>('/admin/texts/candidates?limit=25');
+export default async function BulkTextsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ limit?: string }>;
+}) {
+  const { limit } = await searchParams;
+  // Bounded here rather than trusted from the URL: each listed book costs an
+  // external Gutenberg lookup.
+  const size = Math.min(Math.max(Number.parseInt(limit ?? '25', 10) || 25, 5), 50);
+  const res = await callAdminApi<{ books: BookRow[]; remaining: number; dismissed: number }>(
+    `/admin/texts/candidates?limit=${size}`,
+  );
 
   return (
     <div>
@@ -33,7 +43,12 @@ export default async function BulkTextsPage() {
       </div>
 
       {res.ok ? (
-        <BulkImport books={res.data.books} />
+        <BulkImport
+          books={res.data.books}
+          size={size}
+          remaining={res.data.remaining}
+          dismissed={res.data.dismissed}
+        />
       ) : (
         <p style={{ color: '#a33', fontSize: 13 }}>Could not load candidates: {res.error}</p>
       )}

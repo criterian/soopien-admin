@@ -283,3 +283,15 @@ export async function parseAllPendingTexts() {
   revalidatePath('/books/texts');
   return { report: res.data.report };
 }
+
+/** Dismiss a book from the bulk import list — reversible, see migration 78. */
+export async function skipBookText(bookId: string, reason?: string) {
+  await requireAdmin();
+  const res = await callAdminApi('/admin/texts/skip', {
+    method: 'POST',
+    body: { bookId, reason },
+  });
+  if (!res.ok) return { error: res.error };
+  revalidatePath('/books/texts');
+  return { ok: true };
+}

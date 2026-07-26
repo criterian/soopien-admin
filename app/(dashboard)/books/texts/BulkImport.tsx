@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { importGutenbergBatch, parseAllPendingTexts, searchGutenberg } from '../actions';
+import { importGutenbergBatch, parseAllPendingTexts, searchGutenberg, skipBookText } from '../actions';
 
 /**
  * Bulk Project Gutenberg import (DISCOVERY.md §7.3).
@@ -46,10 +46,14 @@ function Row({
   row,
   chosen,
   onChoose,
+  onDismiss,
+  busy,
 }: {
   row: BookRow;
   chosen: number | null;
   onChoose: (id: number | null) => void;
+  onDismiss: () => void;
+  busy: boolean;
 }) {
   const [extra, setExtra] = useState<Candidate[]>([]);
   const [query, setQuery] = useState('');
@@ -111,11 +115,35 @@ function Row({
           </p>
         )}
       </td>
+      <td style={{ verticalAlign: 'top', paddingTop: 10, textAlign: 'right' }}>
+        {/* Dismissing is reversible — Gutenberg keeps digitising, so this
+            records "not there today", not "never look again". */}
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={onDismiss}
+          disabled={busy}
+          title="Not on Gutenberg — take it off this list"
+          style={{ fontSize: 12, whiteSpace: 'nowrap' }}
+        >
+          Dismiss
+        </button>
+      </td>
     </tr>
   );
 }
 
-export function BulkImport({ books }: { books: BookRow[] }) {
+export function BulkImport({
+  books,
+  size,
+  remaining,
+  dismissed,
+}: {
+  books: BookRow[];
+  size: number;
+  remaining: number;
+  dismissed: number;
+}) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [picks, setPicks] = useState<Record<string, number | null>>({});
@@ -123,6 +151,25 @@ export function BulkImport({ books }: { books: BookRow[] }) {
   const [error, setError] = useState<string | null>(null);
 
   const selected = Object.entries(picks).filter(([, id]) => id !== null) as Array<[string, number]>;
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const visible = books.filter((b) => !hidden.has(b.bookId));
+
+  function dismiss(bookId: string) {
+    // Hidden immediately so a long list can be cleared without waiting on a
+    // round trip per row; the server call still decides what persists.
+    setHidden((h) => new Set(h).add(bookId));
+    start(async () => {
+      const res = await skipBookText(bookId);
+      if (res.error) {
+        setHidden((h) => {
+          const next = new Set(h);
+          next.delete(bookId);
+          return next;
+        });
+        setError(res.error);
+      }
+    });
+  }
 
   function runImport() {
     setError(null);
@@ -165,6 +212,39 @@ export function BulkImport({ books }: { books: BookRow[] }) {
         </p>
       </div>
 
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          marginBottom: 14,
+          fontSize: 13,
+          flexWrap: 'wrap',
+        }}
+      >
+        <span className="muted">
+          {remaining} book{remaining === 1 ? '' : 's'} still without a text
+          {dismissed > 0 && ` · ${dismissed} dismissed`}
+        </span>
+        <span style={{ marginLeft: 'auto' }} className="muted">
+          Show
+        </span>
+        <select
+          value={size}
+          onChange={(e) => router.push(`/books/texts?limit=${e.target.value}`)}
+          style={{ width: 80 }}
+        >
+          {[10, 25, 50].map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+        <button type="button" className="btn" onClick={() => router.refresh()} disabled={pending}>
+          Load next
+        </button>
+      </div>
+
       {books.length === 0 ? (
         <p className="muted">Every book in the catalog already has a text.</p>
       ) : (
@@ -172,17 +252,20 @@ export function BulkImport({ books }: { books: BookRow[] }) {
           <table className="table" style={{ width: '100%' }}>
             <thead>
               <tr>
-                <th style={{ width: '38%' }}>Catalog book</th>
+                <th style={{ width: '34%' }}>Catalog book</th>
                 <th>Project Gutenberg match</th>
+                <th style={{ width: 90 }} />
               </tr>
             </thead>
             <tbody>
-              {books.map((row) => (
+              {visible.map((row) => (
                 <Row
                   key={row.bookId}
                   row={row}
                   chosen={picks[row.bookId] ?? null}
                   onChoose={(id) => setPicks((p) => ({ ...p, [row.bookId]: id }))}
+                  onDismiss={() => dismiss(row.bookId)}
+                  busy={pending}
                 />
               ))}
             </tbody>
