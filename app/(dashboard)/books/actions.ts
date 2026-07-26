@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { callAdminApi } from '@/lib/adminApi';
 import { requireAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
@@ -170,4 +171,62 @@ export async function deleteBook(id: string) {
   if (error) return { error: error.message };
   revalidatePath('/books');
   redirect('/books');
+}
+
+// ── Book texts (Smart Discovery Phase 3, DISCOVERY.md §7) ───────────────────
+
+export type TextLicense = 'public_domain' | 'licensed' | 'no_display';
+
+/**
+ * Import a full text for a book.
+ *
+ * Goes through the API rather than writing here: the API is what downloads the
+ * file, stores it in the private R2 bucket and validates the format. Duplicating
+ * any of that in the panel would mean two places deciding what is legal to
+ * store.
+ */
+export async function importBookText(
+  bookId: string,
+  input: { url?: string; gutenbergId?: string; license: TextLicense },
+) {
+  await requireAdmin();
+
+  const url = input.url?.trim();
+  const gutenbergId = input.gutenbergId?.trim();
+  if (!url && !gutenbergId) return { error: 'Enter a URL or a Project Gutenberg id' };
+  if (gutenbergId && !/^\d+$/.test(gutenbergId)) return { error: 'Gutenberg id must be a number' };
+
+  const res = await callAdminApi('/admin/texts/import', {
+    method: 'POST',
+    body: {
+      bookId,
+      ...(url ? { url } : { gutenbergId: Number(gutenbergId) }),
+      license: input.license,
+    },
+  });
+  if (!res.ok) return { error: res.error };
+
+  revalidatePath(`/books/${bookId}`);
+  return { ok: true };
+}
+
+/** Run the parser over pending texts — turns an upload into searchable chunks. */
+export async function parsePendingTexts(bookId: string) {
+  await requireAdmin();
+  const res = await callAdminApi<{ report: { ready: number; failed: number; blocks: number } }>(
+    '/admin/jobs/text-parse',
+    { method: 'POST', body: { limit: 3 } },
+  );
+  if (!res.ok) return { error: res.error };
+  revalidatePath(`/books/${bookId}`);
+  return { ok: true, report: res.data.report };
+}
+
+/** Remove a text, its blocks, its chunks and the stored file. */
+export async function deleteBookText(bookId: string, textId: string) {
+  await requireAdmin();
+  const res = await callAdminApi(`/admin/texts/${textId}`, { method: 'DELETE' });
+  if (!res.ok) return { error: res.error };
+  revalidatePath(`/books/${bookId}`);
+  return { ok: true };
 }

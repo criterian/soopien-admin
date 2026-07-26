@@ -123,3 +123,46 @@ export async function findDuplicateIsbns(): Promise<{ isbn: string; count: numbe
     .map(([isbn, count]) => ({ isbn, count }))
     .sort((a, b) => b.count - a.count);
 }
+
+// ── Book texts (Smart Discovery Phase 3, DISCOVERY.md §7) ───────────────────
+
+export type BookText = {
+  id: string;
+  format: 'epub' | 'txt' | 'pdf';
+  license: 'public_domain' | 'licensed' | 'no_display';
+  status: 'pending' | 'parsing' | 'ready' | 'failed';
+  source_url: string | null;
+  title: string | null;
+  block_count: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Uploaded full texts for a book, plus how many chunks each produced. */
+export async function getBookTexts(bookId: string): Promise<Array<BookText & { chunks: number }>> {
+  const { data } = await supabaseAdmin
+    .from('book_texts')
+    .select('id, format, license, status, source_url, title, block_count, error, created_at, updated_at')
+    .eq('book_id', bookId)
+    .order('created_at', { ascending: false });
+
+  const texts = (data ?? []) as BookText[];
+  if (!texts.length) return [];
+
+  // Chunk counts come from the knowledge base, which is where the text actually
+  // becomes searchable — block_count alone can look healthy while ingest is
+  // still behind.
+  const counts = await Promise.all(
+    texts.map((t) =>
+      supabaseAdmin
+        .from('kb_chunks')
+        .select('*', { count: 'exact', head: true })
+        .eq('source_type', 'book_text')
+        .eq('source_id', t.id)
+        .then((r) => r.count ?? 0),
+    ),
+  );
+
+  return texts.map((t, i) => ({ ...t, chunks: counts[i] ?? 0 }));
+}

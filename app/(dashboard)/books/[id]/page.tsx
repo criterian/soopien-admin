@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getBook, listAuthorOptions, listPublisherOptions } from '../data';
+import { getBook, getBookTexts, listAuthorOptions, listPublisherOptions } from '../data';
 import { languageLabel } from '@/lib/languages';
 import { BookEditForm } from './BookEditForm';
 import { CoverField } from './CoverField';
+import { BookTextsPanel } from './BookTextsPanel';
 import { fmtNumber } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
@@ -19,10 +20,11 @@ function Metric({ label, value }: { label: string; value: string }) {
 
 export default async function BookDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [res, authors, publishers] = await Promise.all([
+  const [res, authors, publishers, texts] = await Promise.all([
     getBook(id),
     listAuthorOptions().catch(() => []),
     listPublisherOptions().catch(() => []),
+    getBookTexts(id).catch(() => []),
   ]);
   if (!res) notFound();
   const { book, authors: linked, publisher, stats } = res;
@@ -55,6 +57,8 @@ export default async function BookDetailPage({ params }: { params: Promise<{ id:
               <CoverField bookId={book.id} side="back" url={book.cover_back_url} title={book.title} />
             </div>
           </div>
+
+          <BookTextsPanel bookId={book.id} texts={texts} />
 
           <div className="stat-grid" style={{ marginBottom: 0 }}>
             <Metric label="Readers" value={fmtNumber(stats.readers)} />
