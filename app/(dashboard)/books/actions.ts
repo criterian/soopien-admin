@@ -230,3 +230,56 @@ export async function deleteBookText(bookId: string, textId: string) {
   revalidatePath(`/books/${bookId}`);
   return { ok: true };
 }
+
+// ── Bulk Gutenberg import (DISCOVERY.md §7.3) ───────────────────────────────
+
+/** Mirrors GutenbergCandidate in apps/api lib/kb/gutenberg.ts. */
+export type GutenbergCandidate = {
+  gutenbergId: number;
+  title: string;
+  authors: string[];
+  languages: string[];
+  downloads: number;
+  titleScore: number;
+};
+
+/** Free-form Gutenberg search, for rows whose proposals are wrong. */
+export async function searchGutenberg(query: string) {
+  await requireAdmin();
+  const res = await callAdminApi<{ results: GutenbergCandidate[] }>(
+    `/admin/texts/search?q=${encodeURIComponent(query)}`,
+  );
+  if (!res.ok) return { error: res.error as string, results: [] as GutenbergCandidate[] };
+  return { results: res.data.results, error: undefined };
+}
+
+/**
+ * Import confirmed book↔Gutenberg pairings. Always public domain — this path
+ * only ever fetches from Gutenberg, so exposing a licence choice here would add
+ * a way to get it wrong and no way to get it more right.
+ */
+export async function importGutenbergBatch(items: Array<{ bookId: string; gutenbergId: number }>) {
+  await requireAdmin();
+  if (!items.length) return { error: 'Nothing selected' };
+
+  const res = await callAdminApi<{ imported: number; results: Array<{ bookId: string; ok: boolean; error?: string }> }>(
+    '/admin/texts/import-batch',
+    { method: 'POST', body: { items, license: 'public_domain' } },
+  );
+  if (!res.ok) return { error: res.error };
+
+  revalidatePath('/books/texts');
+  return { imported: res.data.imported, results: res.data.results };
+}
+
+/** Parse whatever is pending, across all books. */
+export async function parseAllPendingTexts() {
+  await requireAdmin();
+  const res = await callAdminApi<{ report: { ready: number; failed: number; blocks: number } }>(
+    '/admin/jobs/text-parse',
+    { method: 'POST', body: { limit: 10 } },
+  );
+  if (!res.ok) return { error: res.error };
+  revalidatePath('/books/texts');
+  return { report: res.data.report };
+}

@@ -35,6 +35,7 @@ const GROUPS: Group[] = [
     label: 'Catalog',
     items: [
       { href: '/books', label: 'Books', icon: '▤' },
+      { href: '/books/texts', label: 'Full texts', icon: '❞' },
       { href: '/films', label: 'Films', icon: '▦' },
       { href: '/authors', label: 'People', icon: '✎' },
       { href: '/publishers', label: 'Publishers', icon: '⌂' },
