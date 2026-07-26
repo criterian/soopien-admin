@@ -295,3 +295,29 @@ export async function skipBookText(bookId: string, reason?: string) {
   revalidatePath('/books/texts');
   return { ok: true };
 }
+
+/**
+ * Add a book to the shared catalog.
+ *
+ * Goes through the API's admin endpoint rather than inserting here, so the book
+ * arrives enriched — cover, synopsis, subjects, work key. Inserting directly
+ * would create a row with a title and nothing else, which the discovery index
+ * cannot do anything useful with.
+ */
+export async function createBook(input: { title: string; author?: string; isbn?: string }) {
+  await requireAdmin();
+  if (!input.title.trim()) return { error: 'Title is required' };
+
+  const res = await callAdminApi<{ book: { id: string }; existed: boolean }>('/admin/books', {
+    method: 'POST',
+    body: {
+      title: input.title.trim(),
+      author: input.author?.trim() || null,
+      isbn: input.isbn?.trim() || null,
+    },
+  });
+  if (!res.ok) return { error: res.error };
+
+  revalidatePath('/books');
+  return { bookId: res.data.book.id, existed: res.data.existed };
+}

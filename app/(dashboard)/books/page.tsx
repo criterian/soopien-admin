@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { NewBookForm } from './NewBookForm';
 import { listBooks, findDuplicateIsbns, PAGE_SIZE, type BookRow } from './data';
 import { languageLabel } from '@/lib/languages';
 import { fmtDate, fmtNumber } from '@/lib/format';
@@ -44,6 +45,8 @@ export default async function BooksPage({
           <div className="sub">{fmtNumber(total)} in catalog</div>
         </div>
       </div>
+
+      <NewBookForm />
 
       {dupes.length > 0 ? (
         <div className="error-banner" style={{ background: 'rgba(232,184,75,0.14)', borderColor: 'rgba(194,138,44,0.4)', color: '#8a6316' }}>
