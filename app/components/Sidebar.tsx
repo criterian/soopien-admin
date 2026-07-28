@@ -60,6 +60,7 @@ const GROUPS: Group[] = [
       { href: '/music', label: 'Music library', icon: '♪' },
       { href: '/gamification', label: 'Gamification', icon: '★' },
       { href: '/push', label: 'Push', icon: '◈' },
+      { href: '/emails', label: 'Emails', icon: '✉' },
       { href: '/config', label: 'Limits & config', icon: '⚙' },
     ],
   },

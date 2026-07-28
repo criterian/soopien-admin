@@ -1,7 +1,9 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getUser, getUserActivity } from '../data';
+import { getUserEmail } from '../../emails/data';
 import { UserActions } from './UserActions';
+import { EmailPanel } from './EmailPanel';
 import { requireAdmin } from '@/lib/auth';
 import { fmtDate, fmtDateTime, fmtNumber, ageFromDob, initials } from '@/lib/format';
 
@@ -20,7 +22,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
   const [me, user] = await Promise.all([requireAdmin(), getUser(id)]);
   if (!user) notFound();
-  const activity = await getUserActivity(id);
+  const [activity, email] = await Promise.all([getUserActivity(id), getUserEmail(id).catch(() => null)]);
   const age = ageFromDob(user.date_of_birth);
 
   return (
@@ -100,6 +102,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               <dd style={{ margin: 0 }}>{fmtDateTime(user.created_at)}</dd>
             </dl>
           </div>
+
+          {email ? (
+            <EmailPanel userId={user.id} userLabel={user.display_name ?? user.username} activity={email} />
+          ) : null}
         </div>
 
         <UserActions
